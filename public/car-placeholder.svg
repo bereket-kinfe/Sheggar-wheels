@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title">
+  <title id="title">Car image coming soon</title>
+  <rect width="1200" height="800" fill="#e8edf2"/>
+  <path d="M280 500h640l-55-150c-12-32-42-54-77-54H420c-35 0-65 22-77 54l-63 150Z" fill="#c5d0db"/>
+  <path d="M365 445h470l-34-95c-5-14-18-23-33-23H432c-15 0-28 9-33 23l-34 95Z" fill="#eef2f6"/>
+  <path d="M240 500h720c36 0 65 29 65 65v63H175v-63c0-36 29-65 65-65Z" fill="#8a9aaa"/>
+  <circle cx="350" cy="630" r="68" fill="#344253"/><circle cx="350" cy="630" r="30" fill="#dce3e9"/>
+  <circle cx="850" cy="630" r="68" fill="#344253"/><circle cx="850" cy="630" r="30" fill="#dce3e9"/>
+  <text x="600" y="740" text-anchor="middle" font-family="Arial,sans-serif" font-size="28" fill="#506070">Vehicle photo unavailable</text>
+</svg>
