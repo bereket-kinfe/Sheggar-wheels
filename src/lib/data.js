@@ -44,12 +44,25 @@ export function initializeDemoData() {
     ];
     writeStorage(KEYS.bookings, samples);
   }
+  const legacyBookings = readStorage("sw_bookings_v1", []);
+  if (legacyBookings.length) {
+    const savedBookings = readStorage(KEYS.bookings, []);
+    const savedIds = new Set(savedBookings.map((booking) => String(booking.id)));
+    const migratedBookings = legacyBookings
+      .filter((booking) => !savedIds.has(String(booking.id)))
+      .map((booking) => ({
+        ...booking,
+        renterId: booking.renterId || booking.userId,
+        ownerId: booking.ownerId || getCars().find((car) => String(car.id) === String(booking.carId))?.ownerId,
+      }));
+    if (migratedBookings.length) writeStorage(KEYS.bookings, [...savedBookings, ...migratedBookings]);
+  }
   for (const key of [KEYS.reviews, KEYS.disputes, KEYS.announcements]) if (localStorage.getItem(key) == null) writeStorage(key, []);
   // getUsers migrates/seeds the demo accounts.
   getUsers();
 }
 export const getCars = () => readStorage(KEYS.cars, []);
-export const getBookings = () => readStorage(KEYS.bookings, []).map((b) => ({ ...b, status: b.status === "pending" ? "requested" : b.status, total: b.total ?? b.totalPrice ?? 0, subtotal: b.subtotal ?? b.totalPrice ?? 0, fee: b.fee ?? 0, ownerId: b.ownerId ?? getCars().find(c => String(c.id) === String(b.carId))?.ownerId }));
+export const getBookings = () => readStorage(KEYS.bookings, []).map((b) => ({ ...b, renterId: b.renterId || b.userId, status: b.status === "pending" ? "requested" : b.status, total: b.total ?? b.totalPrice ?? 0, subtotal: b.subtotal ?? b.totalPrice ?? 0, fee: b.fee ?? 0, ownerId: b.ownerId ?? getCars().find(c => String(c.id) === String(b.carId))?.ownerId }));
 export const getReviews = () => readStorage(KEYS.reviews, []);
 export const getDisputes = () => readStorage(KEYS.disputes, []);
 export const getAnnouncements = () => readStorage(KEYS.announcements, []);
@@ -58,8 +71,10 @@ function fail(error) { return { ok: false, error }; }
 function sessionFor(role) { const user = getCurrentSession(); if (!user) return fail("Not signed in"); if (user.status === "suspended") return fail("Account suspended"); if (role && !hasRole(user, role)) return fail(`Requires ${role} role`); return { ok: true, user }; }
 export function createBooking({ carId, startDate, endDate }) {
   const auth = sessionFor("renter"); if (!auth.ok) return auth;
+  initializeDemoData();
   const car = getCars().find((c) => String(c.id) === String(carId)); if (!car) return fail("Car not found");
   if (car.status !== "approved") return fail("This car is not available for public booking.");
+  if (car.ownerId === auth.user.id) return fail("You cannot book a car you own.");
   const start = new Date(`${startDate}T00:00:00`); const end = new Date(`${endDate}T00:00:00`); const today = new Date(); today.setHours(0,0,0,0);
   if (!startDate || !endDate || Number.isNaN(+start) || Number.isNaN(+end) || start < today || end <= start) return fail("Choose valid future dates; return date must be after pickup.");
   const blocked = new Set(car.unavailableDates || []); for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) if (blocked.has(dateKey(d))) return fail("Selected dates include an owner-blocked unavailable date.");
@@ -68,7 +83,7 @@ export function createBooking({ carId, startDate, endDate }) {
   const overlap = bookings.some((b) => String(b.carId) === String(carId) && !["cancelled", "declined", "resolved"].includes(b.status) && startDate < b.endDate && endDate > b.startDate);
   if (overlap) return fail("These dates overlap another active booking.");
   const days = Math.round((end - start) / 86400000); const pricePerDay = Number(car.pricePerDay ?? car.price); const subtotal = days * pricePerDay; const fee = Math.round(subtotal * 0.05);
-  const booking = { id: id("booking"), carId: String(car.id), carName: car.name || `${car.make} ${car.model}`, renterId: auth.user.id, ownerId: car.ownerId, startDate, endDate, days, pricePerDay, subtotal, fee, total: subtotal + fee, paymentStatus: "unpaid", status: "requested", createdAt: now(), updatedAt: now() };
+  const booking = { id: id("booking"), carId: String(car.id), carName: car.name || `${car.make} ${car.model}`, renterId: auth.user.id, userId: auth.user.id, renterName: auth.user.name, renterEmail: auth.user.email, ownerId: car.ownerId, startDate, endDate, days, pricePerDay, subtotal, fee, total: subtotal + fee, paymentStatus: "unpaid", status: "requested", createdAt: now(), updatedAt: now() };
   const saved = writeStorage(KEYS.bookings, [...bookings, booking]); return saved.ok ? { ok: true, booking } : saved;
 }
 export function transitionBooking(bookingId, action) {

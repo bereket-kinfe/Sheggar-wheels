@@ -243,6 +243,12 @@ export default function WorkspacePage({
             )
           ? "/owner/cars"
           : `/owner/${section}`;
+  const activeAdminUrl =
+    config.admin.links.find(
+      ([, url]) =>
+        pathname === url ||
+        (url !== "/admin" && pathname.startsWith(`${url}/`)),
+    )?.[1] || "/admin";
   const exportRows = (data) =>
     exportCsv(`${section || kind}-report.csv`, [
       ["ID", "Status", "Details"],
@@ -258,7 +264,7 @@ export default function WorkspacePage({
         <Link href="/" className="font-bold text-xl">
           sheggar wheels
         </Link>
-        {kind !== "owner" && (
+        {kind !== "owner" && kind !== "admin" && (
           <nav className="flex flex-wrap gap-3 text-sm">
             {config[kind]?.links.map(([label, url]) => (
               <Link key={url} className="underline" href={url}>
@@ -278,17 +284,21 @@ export default function WorkspacePage({
         </button>
       </header>
       <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-8 md:flex-row md:px-8">
-        {kind === "owner" && (
+        {(kind === "owner" || kind === "admin") && (
           <aside className="w-full shrink-0 rounded-xl border bg-white p-4 md:sticky md:top-6 md:h-fit md:w-60">
             <p className="mb-4 px-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Owner workspace
+              {config[kind].title}
             </p>
             <nav className="flex gap-2 overflow-x-auto md:flex-col">
-              {config.owner.links.map(([label, url]) => (
+              {config[kind].links.map(([label, url]) => (
                 <Link
                   key={url}
-                  aria-current={url === activeOwnerUrl ? "page" : undefined}
-                  className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-sm ${url === activeOwnerUrl ? "bg-slate-100 font-medium text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
+                  aria-current={
+                    url === (kind === "admin" ? activeAdminUrl : activeOwnerUrl)
+                      ? "page"
+                      : undefined
+                  }
+                  className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-sm ${url === (kind === "admin" ? activeAdminUrl : activeOwnerUrl) ? "bg-slate-100 font-medium text-slate-900" : "text-slate-600 hover:bg-slate-100"}`}
                   href={url}
                 >
                   {label}

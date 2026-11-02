@@ -57,7 +57,7 @@ export default function MyBookingsPage() {
       return;
     }
 
-    if (session.role !== "renter") {
+    if (!(session.roles || [session.role]).includes("renter")) {
       router.replace("/cars");
       return;
     }
@@ -76,7 +76,7 @@ export default function MyBookingsPage() {
       // Show only bookings created by this renter.
       const mine = stored.filter(
         (booking) =>
-          String(booking.userId) === String(session.id)
+          String(booking.renterId || booking.userId) === String(session.id)
       );
 
       setBookings(mine);
@@ -257,7 +257,7 @@ export default function MyBookingsPage() {
                         <p>
                           <span>Total</span>
                           <strong>
-                            ETB {formatPrice(booking.totalPrice)}
+                            ETB {formatPrice(booking.total ?? booking.totalPrice)}
                           </strong>
                         </p>
 

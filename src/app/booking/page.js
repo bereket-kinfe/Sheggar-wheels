@@ -6,8 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import carDetails from "../car-details.json";
 import { getSession } from "../../lib/auth";
-
-const BOOKINGS_KEY = "sw_bookings_v1";
+import { createBooking } from "../../lib/data";
 
 function getLocalDateString(date) {
   const year = date.getFullYear();
@@ -46,6 +45,7 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [booking, setBooking] = useState(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- initialize client-only session and query state after hydration */
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     const selectedCarId = query.get("carId") || "";
@@ -67,6 +67,7 @@ export default function BookingPage() {
     setEndDate(addDays(today, 2));
     setCheckingSession(false);
   }, [router]);
+  /* eslint-enable react-hooks/set-state-in-effect */
  
   const car = carDetails.find((item) => item.id === Number(carId));
 
@@ -95,7 +96,6 @@ export default function BookingPage() {
     }
 
     const today = getLocalDateString(new Date());
-
     if (!startDate || !endDate || startDate < today) {
       setError("Please select a valid pickup date.");
       return;
@@ -106,55 +106,22 @@ export default function BookingPage() {
       return;
     }
 
-    let existingBookings = [];
-
+    let result;
     try {
-      existingBookings = JSON.parse(localStorage.getItem(BOOKINGS_KEY) || "[]");
+      result = createBooking({
+        carId: car.id,
+        startDate,
+        endDate,
+      });
     } catch {
-      existingBookings = [];
-    }
-
-    const hasConflict = existingBookings.some((existing) => {
-      if (String(existing.carId) !== String(car.id) || ["cancelled", "declined", "resolved"].includes(existing.status)) {
-        return false;
-      }
-
-      return startDate < existing.endDate && endDate > existing.startDate;
-    });
-
-    if (hasConflict) {
-      setError(
-        "This car already has a booking during those dates. Please choose different dates.",
-      );
+      setError("Your booking could not be saved. Please check browser storage and try again.");
       return;
     }
-
-    const newBooking = {
-      id: crypto.randomUUID(),
-      userId: user.id,
-      renterId: user.id,
-      renterName: user.name,
-      renterEmail: user.email,
-      carId: car.id,
-      carName: car.name,
-      startDate,
-      endDate,
-      days: rentalDays,
-      pricePerDay: car.price,
-      totalPrice,
-      ownerId: car.ownerId || "demo-owner",
-      subtotal: totalPrice,
-      fee: Math.round(totalPrice * 0.05),
-      total: totalPrice + Math.round(totalPrice * 0.05),
-      paymentStatus: "unpaid",
-      status: "requested",
-      createdAt: new Date().toISOString(),
-    };
-
-    const updatedBookings = [...existingBookings, newBooking];
-
-    localStorage.setItem(BOOKINGS_KEY, JSON.stringify(updatedBookings));
-    router.push(`/checkout?bookingId=${newBooking.id}`);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.push(`/checkout?bookingId=${result.booking.id}`);
   }
 
   if (checkingSession) {

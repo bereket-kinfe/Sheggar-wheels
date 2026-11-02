@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { getSession } from "../../lib/auth";
+import { getBookings, initializeDemoData, KEYS } from "../../lib/data";
 import carDetails from "../car-details.json";
-
-const BOOKINGS_KEY = "sw_bookings_v1";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -28,6 +27,7 @@ export default function CheckoutPage() {
       return;
     }
 
+    initializeDemoData();
     const params = new URLSearchParams(window.location.search);
     const bookingId = params.get("bookingId");
 
@@ -38,7 +38,7 @@ export default function CheckoutPage() {
     }
 
     try {
-      const bookings = JSON.parse(localStorage.getItem(BOOKINGS_KEY) || "[]");
+      const bookings = getBookings();
 
       const found = bookings.find(
         (item) =>
@@ -86,7 +86,7 @@ export default function CheckoutPage() {
     setError("");
 
     try {
-      const bookings = JSON.parse(localStorage.getItem(BOOKINGS_KEY) || "[]");
+      const bookings = getBookings();
 
       const index = bookings.findIndex(
         (item) =>
@@ -111,7 +111,7 @@ export default function CheckoutPage() {
 
       bookings[index] = updatedBooking;
 
-      localStorage.setItem(BOOKINGS_KEY, JSON.stringify(bookings));
+      localStorage.setItem(KEYS.bookings, JSON.stringify(bookings));
 
       setBooking(updatedBooking);
       setPaid(true);
